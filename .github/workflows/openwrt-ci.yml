@@ -1,34 +1,45 @@
+#
+# This is free software, lisence use MIT.
+# 
+# Copyright (C) 2019 P3TERX <https://p3terx.com>
+# Copyright (C) 2019 KFERMercer <KFER.Mercer@gmail.com>
 # 
 # <https://github.com/KFERMercer/OpenWrt-CI>
+# x86
 #
-# Copyright (C) 2019 P3TERX
-#
-# Copyright (C) 2020 KFERMercer
-#
+
 name: OpenWrt-CI
 
 on:
-  schedule:
-    - cron: 0 20 * * *
-  release:
-    types: [published]
+  #schedule:
+    #- cron: 0 20 * * *
+  push:
+    branches: 
+      - master
+
+env:
+  REPO_URL: https://github.com/Lienol/openwrt
+  REPO_BRANCH: dev-19.07
+  CONFIG_FILE: .config
+  DIY_SH: diy.sh
+  FREE_UP_DISK: false
+  SSH_ACTIONS: true
+  UPLOAD_BIN_DIR: false
+  UPLOAD_FIRMWARE: true
+  TZ: Asia/Shanghai
 
 jobs:
 
-  build_openwrt:
-
-    name: Build OpenWrt firmware
+  build:
 
     runs-on: ubuntu-latest
 
-    if: github.event.repository.owner.id == github.event.sender.id
-
     steps:
-
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@master
         with:
           ref: master
+          fetch-depth: 1000000
 
       - name: Space cleanup
         env:
@@ -36,22 +47,87 @@ jobs:
         run: |
           docker rmi `docker images -q`
           sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d
-          sudo -E apt-get -y purge azure-cli ghc* zulu* hhvm llvm* firefox google* dotnet* powershell openjdk* mysql* php* android*
+          sudo -E apt-get -y purge azure-cli ghc* zulu* hhvm llvm* firefox google* dotnet* powershell openjdk* mysql* php*
           sudo -E apt-get update
-          sudo -E apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch python3 unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs gcc-multilib g++-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler antlr3 gperf swig
+          sudo -E apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch python3 unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs gcc-multilib g++-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler
           sudo -E apt-get -y autoremove --purge
           sudo -E apt-get clean
+
+          # 利用挂载在 /mnt/ 的 14G 额外空间:
+          # sudo mkdir -p -m 777 /mnt/openwrt/bin /mnt/openwrt/build_dir/host /mnt/openwrt/build_dir/hostpkg /mnt/openwrt/dl /mnt/openwrt/feeds /mnt/openwrt/staging_dir
+          # ln -s /mnt/openwrt/bin ./bin
+          # mkdir -p ./build_dir/host && ln -s /mnt/openwrt/build_dir/host ./build_dir/host
+          # mkdir -p ./build_dir/host && ln -s /mnt/openwrt/build_dir/hostpkg ./build_dir/hostpkg
+          # ln -s /mnt/openwrt/dl ./dl
+          # ln -s /mnt/openwrt/feeds ./feeds
+          # ln -s /mnt/openwrt/staging_dir ./staging_dir
 
           df -h
 
       - name: Update feeds
         run: |
-          sed -i 's/#src-git helloworld/src-git helloworld/g' ./feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
+      - name: Costom configure file
+        run: |
+          rm -f ./.config*
+          touch ./.config
+
+          cat >> .config <<EOF
+          # CONFIG_PACKAGE_autosamba is not set
+          # CONFIG_PACKAGE_kmod-sound-hda-core is not set
+          # CONFIG_PACKAGE_kmod-sound-via82xx is not set
+          # CONFIG_PACKAGE_kmod-usb-audio is not set
+          # CONFIG_PACKAGE_kmod-usb-hid is not set
+          # CONFIG_PACKAGE_kmod-usb-net-rtl8150 is not set
+          # CONFIG_PACKAGE_kmod-usb-net-rtl8152 is not set
+          # CONFIG_PACKAGE_luci-app-accesscontrol is not set
+          # CONFIG_PACKAGE_luci-app-arpbind is not set
+          # CONFIG_PACKAGE_luci-app-autoreboot is not set
+          # CONFIG_PACKAGE_luci-app-filetransfer is not set
+          # CONFIG_PACKAGE_luci-app-flowoffload is not set
+          # CONFIG_PACKAGE_luci-app-ipsec-vpnd is not set
+          # CONFIG_PACKAGE_luci-app-nlbwmon is not set
+          # CONFIG_PACKAGE_luci-app-ramfree is not set
+          # CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_V2ray_plugin is not set
+          # CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_V2ray is not set
+          # CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Trojan is not set
+          # CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Kcptun is not set
+          # CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_ShadowsocksR_Server is not set
+          # CONFIG_PACKAGE_luci-app-unblockmusic is not set
+          # CONFIG_UnblockNeteaseMusic_Go is not set
+          # CONFIG_UnblockNeteaseMusic_NodeJS is not set
+          # CONFIG_PACKAGE_luci-app-upnp is not set
+          # CONFIG_PACKAGE_luci-app-vsftpd is not set
+          # CONFIG_PACKAGE_luci-app-wol is not set
+          # CONFIG_PACKAGE_luci-app-xlnetacc is not set
+          # CONFIG_PACKAGE_luci-app-zerotier is not set
+          # CONFIG_PACKAGE_coremark is not set
+          # CONFIG_PACKAGE_iwinfo is not set
+          CONFIG_TARGET_ramips=y
+          CONFIG_TARGET_ramips_rt305x=y
+          CONFIG_TARGET_ramips_rt305x_DEVICE_huawei_hg255d=y
+          CONFIG_PACKAGE_kmod-rtl8192cu=y
+          CONFIG_PACKAGE_rtl8192cu-firmware=y
+          CONFIG_PACKAGE_luci-theme-argon=y
+          CONFIG_PACKAGE_curl=y
+          CONFIG_PACKAGE_luci=y
+          CONFIG_PACKAGE_kmod-usb-core=y
+          CONFIG_PACKAGE_kmod-usb-dwc2=y
+          CONFIG_PACKAGE_kmod-usb-ledtrig-usbport=y
+          CONFIG_PACKAGE_kmod-usb2 is=y
+          EOF
+          
+          sed -i 's/^[ \t]*//g' ./.config
+          make defconfig 
+                  
       - name: Generate configuration file
         run: make defconfig
+
+      - name: SSH connection to Actions
+        uses: P3TERX/debugger-action@master
+        if: env.SSH_ACTIONS == 'true'
 
       - name: Make download
         run: |
@@ -60,7 +136,7 @@ jobs:
 
       - name: Compile firmware
         run: |
-          make -j$(nproc) || make -j1 V=s
+          make -j$(nproc) || make -j8 V=s
           echo "======================="
           echo "Space usage:"
           echo "======================="
@@ -71,39 +147,10 @@ jobs:
           du -h --max-depth=1 ./bin
 
       - name: Prepare artifact
-        run: |
-          mkdir -p ./artifact/firmware
-          mkdir -p ./artifact/package
-          mkdir -p ./artifact/buildinfo
-          rm -rf $(find ./bin/targets/ -type d -name "packages")
-          cp -rf $(find ./bin/targets/ -type f) ./artifact/firmware/
-          cp -rf $(find ./bin/packages/ -type f -name "*.ipk") ./artifact/package/
-          cp -rf $(find ./bin/targets/ -type f -name "*.buildinfo" -o -name "*.manifest") ./artifact/buildinfo/
+        run: find ./bin/targets/ -type d -name "packages" | xargs rm -rf {}
 
-      - name: Deliver buildinfo
-        uses: actions/upload-artifact@v2
+      - name: Upload artifact
+        uses: actions/upload-artifact@master
         with:
-          name: OpenWrt_buildinfo
-          path: ./artifact/buildinfo/
-
-      - name: Deliver package
-        uses: actions/upload-artifact@v2
-        with:
-          name: OpenWrt_package
-          path: ./artifact/package/
-
-      - name: Deliver firmware
-        uses: actions/upload-artifact@v2
-        with:
-          name: OpenWrt_firmware
+          name: OpenWrt firmware
           path: ./bin/targets/
-  
-
-      - name: Upload release asset
-        if: github.event == 'release'
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.YOURTOKEN }}
-          file: ./artifact/firmware/*
-          tag: ${{ github.ref }}
-          file_glob: true
