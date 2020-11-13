@@ -132,8 +132,8 @@ jobs:
         sed -i 's/^[ \t]*//g' ./.config
         make defconfig 
                   
-    - name: Generate configuration file
-      run: make defconfig
+  #  - name: Generate configuration file
+  #    run: make defconfig
 
 
     - name: SSH connection to Actions
