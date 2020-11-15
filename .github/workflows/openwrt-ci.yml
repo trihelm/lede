@@ -116,17 +116,19 @@ jobs:
         # CONFIG_PACKAGE_coremark is not set
         # CONFIG_PACKAGE_iwinfo is not set
         CONFIG_TARGET_ramips=y
-        CONFIG_TARGET_ramips_rt305x=y
-        CONFIG_TARGET_ramips_rt305x_DEVICE_huawei_hg255d=y
+        CONFIG_TARGET_ramips_mt7620=y
+        CONFIG_TARGET_ramips_mt7620_DEVICE_youku_yk1=y
         CONFIG_PACKAGE_kmod-rtl8192cu=y
         CONFIG_PACKAGE_rtl8192cu-firmware=y
         CONFIG_PACKAGE_luci-theme-argon=y
         CONFIG_PACKAGE_curl=y
         CONFIG_PACKAGE_luci=y
+        CONFIG_DEFAULT_kmod-usb-ohci=y
+        CONFIG_DEFAULT_kmod-rt2800-soc=y
         CONFIG_PACKAGE_kmod-usb-core=y
         CONFIG_PACKAGE_kmod-usb-dwc2=y
         CONFIG_PACKAGE_kmod-usb-ledtrig-usbport=y
-        CONFIG_PACKAGE_kmod-usb2 is=y
+        CONFIG_PACKAGE_kmod-usb2=y
         EOF
           
         sed -i 's/^[ \t]*//g' ./.config
